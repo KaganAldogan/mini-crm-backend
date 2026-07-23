@@ -17,7 +17,7 @@ class CustomerInteractionController extends Controller
     public function index(Customer $customer): AnonymousResourceCollection
     {
         $interactions = $customer->interactions()
-            ->with('user:id,name')
+            ->with('user:uid,name')
             ->get();
 
         return CustomerInteractionResource::collection($interactions);
@@ -32,7 +32,7 @@ class CustomerInteractionController extends Controller
             'user_id' => $request->user()->id,
         ]);
 
-        $interaction->load('user:id,name');
+        $interaction->load('user:uid,name');
 
         return (new CustomerInteractionResource($interaction))
             ->response()
@@ -47,7 +47,7 @@ class CustomerInteractionController extends Controller
         abort_unless($interaction->customer_id === $customer->id, 404);
 
         $interaction->update($request->validated());
-        $interaction->load('user:id,name');
+        $interaction->load('user:uid,name');
 
         return new CustomerInteractionResource($interaction);
     }

@@ -33,7 +33,7 @@ class StoreRoleRequest extends FormRequest
             'slug' => ['required', 'string', 'max:100', 'alpha_dash', 'unique:roles,slug'],
             'description' => ['nullable', 'string', 'max:255'],
             'permission_ids' => ['array'],
-            'permission_ids.*' => ['integer', 'exists:permissions,id'],
+            'permission_ids.*' => ['uuid', 'exists:permissions,uid'],
         ];
     }
 }

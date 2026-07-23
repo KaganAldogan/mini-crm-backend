@@ -57,6 +57,46 @@ class PermissionSeeder extends Seeder
             'Ayarlar' => [
                 ['name' => 'Ayarları Yönet', 'slug' => 'settings.manage'],
             ],
+            // Personel / ofis — kira CRUD
+            'Kira Yönetimi (Personel)' => [
+                ['name' => 'Sözleşme Görüntüle', 'slug' => 'leases.view'],
+                ['name' => 'Sözleşme Oluştur', 'slug' => 'leases.create'],
+                ['name' => 'Sözleşme Düzenle', 'slug' => 'leases.update'],
+                ['name' => 'Sözleşme Sil', 'slug' => 'leases.delete'],
+                ['name' => 'Ödeme Görüntüle', 'slug' => 'payments.view'],
+                ['name' => 'Ödeme Yönet', 'slug' => 'payments.manage'],
+                ['name' => 'Belge Yönet', 'slug' => 'documents.manage'],
+                ['name' => 'Teklif/Görüntüleme Gör', 'slug' => 'interest.view'],
+            ],
+            // Kiracı portalı — yalnızca kendi sözleşmesi / ödemeleri
+            'Portal (Kiracı)' => [
+                ['name' => 'Kendi Sözleşmesini Gör', 'slug' => 'leases.view_own'],
+                ['name' => 'Kendi Ödemelerini Gör', 'slug' => 'payments.view_own'],
+                ['name' => 'Arıza Taleplerini Gör', 'slug' => 'maintenance.view_own'],
+                ['name' => 'Arıza Talebi Oluştur', 'slug' => 'maintenance.create'],
+            ],
+            // Ev sahibi portalı — kendi mülkleri
+            'Portal (Ev Sahibi)' => [
+                ['name' => 'Mülk Sözleşmelerini Gör', 'slug' => 'leases.view_as_landlord'],
+                ['name' => 'Mülk Ödemelerini Gör', 'slug' => 'payments.view_as_landlord'],
+                ['name' => 'Kendi Mülklerini Gör', 'slug' => 'properties.view_own'],
+                ['name' => 'Teklif/Görüntüleme (Kendi Mülk)', 'slug' => 'interest.view_own'],
+            ],
+            // Teknisyen portalı
+            'Portal (Teknisyen)' => [
+                ['name' => 'Arıza Taleplerini Gör (Teknisyen)', 'slug' => 'maintenance.view_as_technician'],
+                ['name' => 'Arıza Talebi Onayla/Reddet', 'slug' => 'maintenance.decide'],
+            ],
+            // Personel — tüm arıza talepleri
+            'Arıza Yönetimi (Personel)' => [
+                ['name' => 'Tüm Arıza Taleplerini Gör', 'slug' => 'maintenance.view'],
+            ],
+            // Kiracı + ev sahibi ortak portal yetkileri
+            'Portal (Ortak)' => [
+                ['name' => 'Sözleşme Belgelerini Gör', 'slug' => 'documents.view'],
+                ['name' => 'Mesajları Gör', 'slug' => 'messages.view'],
+                ['name' => 'Mesaj Gönder', 'slug' => 'messages.send'],
+            ],
         ];
 
         $sort = 0;

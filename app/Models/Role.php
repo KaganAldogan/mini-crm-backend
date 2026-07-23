@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasUid;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Role extends Model
 {
+    use HasUid;
+
     protected $fillable = [
         'name',
         'slug',
@@ -24,7 +27,14 @@ class Role extends Model
 
     public function permissions(): BelongsToMany
     {
-        return $this->belongsToMany(Permission::class);
+        return $this->belongsToMany(
+            Permission::class,
+            'permission_role',
+            'role_id',
+            'permission_id',
+            'uid',
+            'uid'
+        );
     }
 
     public function users(): HasMany

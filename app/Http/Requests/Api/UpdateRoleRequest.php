@@ -28,11 +28,11 @@ class UpdateRoleRequest extends FormRequest
                 'string',
                 'max:100',
                 'alpha_dash',
-                Rule::unique('roles', 'slug')->ignore($role->id),
+                Rule::unique('roles', 'slug')->ignore($role),
             ],
             'description' => ['nullable', 'string', 'max:255'],
             'permission_ids' => ['array'],
-            'permission_ids.*' => ['integer', 'exists:permissions,id'],
+            'permission_ids.*' => ['uuid', 'exists:permissions,uid'],
         ];
     }
 }
