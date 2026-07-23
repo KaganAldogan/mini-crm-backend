@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('roles', function (Blueprint $table) {
-            $table->id();
+            $table->uuid('uid')->primary();
             $table->string('name');
             $table->string('slug')->unique();
             $table->string('description')->nullable();
@@ -18,7 +18,7 @@ return new class extends Migration
         });
 
         Schema::create('permissions', function (Blueprint $table) {
-            $table->id();
+            $table->uuid('uid')->primary();
             $table->string('name');
             $table->string('slug')->unique();
             $table->string('group');
@@ -27,8 +27,8 @@ return new class extends Migration
         });
 
         Schema::create('permission_role', function (Blueprint $table) {
-            $table->foreignId('role_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('permission_id')->constrained()->cascadeOnDelete();
+            $table->foreignUuid('role_id')->constrained('roles', 'uid')->cascadeOnDelete();
+            $table->foreignUuid('permission_id')->constrained('permissions', 'uid')->cascadeOnDelete();
             $table->primary(['role_id', 'permission_id']);
         });
     }

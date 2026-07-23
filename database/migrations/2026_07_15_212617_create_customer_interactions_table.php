@@ -12,9 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('customer_interactions', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('customer_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('user_id')->nullable()->constrained()->nullOnDelete();
+            $table->uuid('uid')->primary();
+            $table->foreignUuid('customer_id')->constrained('customers', 'uid')->cascadeOnDelete();
+            $table->foreignUuid('user_id')->nullable()->constrained('users', 'uid')->nullOnDelete();
             $table->string('type');
             $table->string('subject')->nullable();
             $table->text('body');

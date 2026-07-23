@@ -17,6 +17,14 @@ class UserResource extends JsonResource
             'name' => $this->name,
             'email' => $this->email,
             'role' => $this->role,
+            'maintenance_categories' => $this->when(
+                $this->relationLoaded('maintenanceCategories'),
+                fn () => $this->maintenanceCategories->map(fn ($category) => [
+                    'id' => $category->id,
+                    'name' => $category->name,
+                    'slug' => $category->slug,
+                ])->values()
+            ),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];

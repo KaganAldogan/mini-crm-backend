@@ -12,7 +12,7 @@ class RoleSeeder extends Seeder
     public function run(): void
     {
         $permissionIds = Permission::query()
-            ->pluck('id', 'slug');
+            ->pluck('uid', 'slug');
 
         $admin = Role::query()->updateOrCreate(
             ['slug' => User::ROLE_ADMIN],
@@ -39,6 +39,18 @@ class RoleSeeder extends Seeder
             'appointments.create',
             'appointments.update',
             'reports.view',
+            'leases.view',
+            'leases.create',
+            'leases.update',
+            'leases.delete',
+            'payments.view',
+            'payments.manage',
+            'documents.view',
+            'documents.manage',
+            'messages.view',
+            'messages.send',
+            'interest.view',
+            'maintenance.view',
         ];
 
         $consultant = Role::query()->updateOrCreate(
@@ -52,7 +64,80 @@ class RoleSeeder extends Seeder
 
         $consultant->permissions()->sync(
             collect($consultantSlugs)
-                ->map(fn (string $slug) => $permissionIds[$slug])
+                ->map(fn (string $slug) => $permissionIds[$slug] ?? null)
+                ->filter()
+                ->values()
+                ->all()
+        );
+
+        $tenant = Role::query()->updateOrCreate(
+            ['slug' => User::ROLE_TENANT],
+            [
+                'name' => 'Kiracı',
+                'description' => 'Kiracı — sözleşme, ödeme ve arıza taleplerine erişir',
+                'is_system' => true,
+            ]
+        );
+
+        $tenant->permissions()->sync(
+            collect([
+                'dashboard.view',
+                'leases.view_own',
+                'payments.view_own',
+                'documents.view',
+                'messages.view',
+                'messages.send',
+                'maintenance.view_own',
+                'maintenance.create',
+            ])
+                ->map(fn (string $slug) => $permissionIds[$slug] ?? null)
+                ->filter()
+                ->values()
+                ->all()
+        );
+
+        $landlord = Role::query()->updateOrCreate(
+            ['slug' => User::ROLE_LANDLORD],
+            [
+                'name' => 'Ev sahibi',
+                'description' => 'Ev sahibi — yalnızca kendi mülk, sözleşme ve ödeme verilerine erişir',
+                'is_system' => true,
+            ]
+        );
+
+        $landlord->permissions()->sync(
+            collect([
+                'dashboard.view',
+                'leases.view_as_landlord',
+                'payments.view_as_landlord',
+                'properties.view_own',
+                'interest.view_own',
+                'documents.view',
+                'messages.view',
+                'messages.send',
+            ])
+                ->map(fn (string $slug) => $permissionIds[$slug] ?? null)
+                ->filter()
+                ->values()
+                ->all()
+        );
+
+        $technician = Role::query()->updateOrCreate(
+            ['slug' => User::ROLE_TECHNICIAN],
+            [
+                'name' => 'Teknisyen',
+                'description' => 'Teknisyen — arıza taleplerini görür, onaylar veya reddeder',
+                'is_system' => true,
+            ]
+        );
+
+        $technician->permissions()->sync(
+            collect([
+                'dashboard.view',
+                'maintenance.view_as_technician',
+                'maintenance.decide',
+            ])
+                ->map(fn (string $slug) => $permissionIds[$slug] ?? null)
                 ->filter()
                 ->values()
                 ->all()

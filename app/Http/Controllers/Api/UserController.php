@@ -16,14 +16,21 @@ class UserController extends Controller
 {
     public function index(): AnonymousResourceCollection
     {
-        $users = User::query()->latest()->get();
+        $users = User::query()
+            ->with('maintenanceCategories')
+            ->latest()
+            ->get();
 
         return UserResource::collection($users);
     }
 
     public function store(StoreUserRequest $request): JsonResponse
     {
-        $user = User::create($request->validated());
+        $data = $request->safe()->only(['name', 'email', 'role', 'password']);
+        $user = User::create($data);
+        $this->syncMaintenanceCategories($user, $request);
+
+        $user->load('maintenanceCategories');
 
         return (new UserResource($user))
             ->response()
@@ -39,8 +46,25 @@ class UserController extends Controller
         }
 
         $user->update($data);
+        $this->syncMaintenanceCategories($user, $request);
+        $user->load('maintenanceCategories');
 
         return new UserResource($user);
+    }
+
+    private function syncMaintenanceCategories(
+        User $user,
+        StoreUserRequest|UpdateUserRequest $request
+    ): void {
+        if ($user->isTechnician()) {
+            $user->maintenanceCategories()->sync(
+                $request->validated('maintenance_category_ids', [])
+            );
+
+            return;
+        }
+
+        $user->maintenanceCategories()->sync([]);
     }
 
     public function destroy(Request $request, User $user): Response|JsonResponse

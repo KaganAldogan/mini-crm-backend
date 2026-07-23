@@ -7,10 +7,13 @@ use App\Http\Requests\Api\StoreCustomerRequest;
 use App\Http\Requests\Api\UpdateCustomerRequest;
 use App\Http\Resources\CustomerResource;
 use App\Models\Customer;
+use App\Services\TenantAccountService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
+use Illuminate\Validation\ValidationException;
+use RuntimeException;
 
 class CustomerController extends Controller
 {
@@ -21,9 +24,11 @@ class CustomerController extends Controller
     {
         $search = $request->string('search')->trim()->toString();
         $status = $request->string('status')->trim()->toString();
-        $perPage = min(max((int) $request->input('per_page', 10), 1), 50);
+        $partyType = $request->string('party_type')->trim()->toString();
+        $perPage = min(max((int) $request->input('per_page', 10), 1), 100);
 
         $customers = Customer::query()
+            ->with(['propertyType', 'partyType'])
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($inner) use ($search) {
                     $inner->where('name', 'like', "%{$search}%")
@@ -35,6 +40,13 @@ class CustomerController extends Controller
             ->when(
                 $status !== '' && in_array($status, Customer::STATUSES, true),
                 fn ($query) => $query->where('status', $status)
+            )
+            ->when($partyType === 'landlord', function ($query) {
+                $query->whereIn('party_type', ['landlord', 'both']);
+            })
+            ->when(
+                $partyType !== '' && $partyType !== 'landlord',
+                fn ($query) => $query->where('party_type', $partyType)
             )
             ->latest()
             ->paginate($perPage)
@@ -67,9 +79,14 @@ class CustomerController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(StoreCustomerRequest $request): JsonResponse
-    {
-        $customer = Customer::create($request->validated());
+    public function store(
+        StoreCustomerRequest $request,
+        TenantAccountService $tenantAccounts
+    ): JsonResponse {
+        $data = $this->normalizeBudgetCurrency($request->safe()->except(['password', 'password_confirmation']));
+        $customer = Customer::create($data);
+        $this->syncTenantAccount($customer, $tenantAccounts, $request->input('password'));
+        $customer->load(['propertyType', 'partyType']);
 
         return (new CustomerResource($customer))
             ->response()
@@ -81,15 +98,23 @@ class CustomerController extends Controller
      */
     public function show(Customer $customer): CustomerResource
     {
+        $customer->load(['propertyType', 'partyType']);
+
         return new CustomerResource($customer);
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(UpdateCustomerRequest $request, Customer $customer): CustomerResource
-    {
-        $customer->update($request->validated());
+    public function update(
+        UpdateCustomerRequest $request,
+        Customer $customer,
+        TenantAccountService $tenantAccounts
+    ): CustomerResource {
+        $data = $this->normalizeBudgetCurrency($request->safe()->except(['password', 'password_confirmation']));
+        $customer->update($data);
+        $this->syncTenantAccount($customer->fresh(), $tenantAccounts, $request->input('password'));
+        $customer->load(['propertyType', 'partyType']);
 
         return new CustomerResource($customer);
     }
@@ -102,5 +127,36 @@ class CustomerController extends Controller
         $customer->delete();
 
         return response()->noContent();
+    }
+
+    private function syncTenantAccount(
+        Customer $customer,
+        TenantAccountService $tenantAccounts,
+        ?string $plainPassword = null
+    ): void {
+        try {
+            $tenantAccounts->ensureForCustomer($customer, $plainPassword);
+        } catch (RuntimeException $e) {
+            $field = str_contains($e->getMessage(), 'şifre') ? 'password' : 'email';
+            throw ValidationException::withMessages([
+                $field => [$e->getMessage()],
+            ]);
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function normalizeBudgetCurrency(array $data): array
+    {
+        $currency = strtoupper($data['budget_currency'] ?? 'TRY');
+        $data['budget_currency'] = $currency;
+
+        if ($currency === 'TRY') {
+            $data['budget_exchange_rate'] = 1;
+        }
+
+        return $data;
     }
 }
