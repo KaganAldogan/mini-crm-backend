@@ -198,6 +198,52 @@ class TechnicianMaintenanceController extends Controller
     }
 
     /**
+     * Atanan teknisyen randevu girmeden işi reddeder.
+     */
+    public function decline(
+        Request $request,
+        MaintenanceRequest $maintenanceRequest
+    ): MaintenanceRequestResource|JsonResponse {
+        $validated = $request->validate([
+            'tenant_note' => ['required', 'string', 'max:2000'],
+        ], [
+            'tenant_note.required' => 'Reddetmek için açıklama yazmanız gerekir.',
+        ]);
+
+        $note = trim((string) $validated['tenant_note']);
+        if ($note === '') {
+            return response()->json([
+                'message' => 'Reddetmek için açıklama yazmanız gerekir.',
+            ], 422);
+        }
+
+        if (! $maintenanceRequest->isAssignedTo($request->user())) {
+            return response()->json([
+                'message' => 'İşi yalnızca atanan teknisyen reddedebilir.',
+            ], 403);
+        }
+
+        if (
+            ! $maintenanceRequest->isApproved()
+            || $maintenanceRequest->appointment_at !== null
+        ) {
+            return response()->json([
+                'message' => 'Yalnızca randevu bekleyen atamalar reddedilebilir.',
+            ], 422);
+        }
+
+        $maintenanceRequest->update([
+            'status' => MaintenanceRequest::STATUS_REJECTED,
+            'tenant_note' => $note,
+            'decided_by_user_id' => $request->user()->id,
+            'decided_at' => now(),
+            'appointment_at' => null,
+        ]);
+
+        return new MaintenanceRequestResource($this->loadRelations($maintenanceRequest));
+    }
+
+    /**
      * Atanan teknisyen randevu tarihini girer; talep "işlemde" olur.
      */
     public function schedule(
@@ -301,13 +347,38 @@ class TechnicianMaintenanceController extends Controller
 
     public function summary(Request $request): JsonResponse
     {
-        $assignedSlugs = $request->user()->maintenanceCategorySlugs();
+        $user = $request->user();
+        $assignedSlugs = $user->maintenanceCategorySlugs();
         $base = MaintenanceRequest::query()
-            ->whereIn('category', $assignedSlugs ?: ['__none__']);
+            ->where(function ($inner) use ($assignedSlugs, $user) {
+                $inner->whereIn('category', $assignedSlugs ?: ['__none__'])
+                    ->orWhere('technician_user_id', $user->id);
+            });
+
+        // Bekleyen: karar bekleyen VEYA bana atanmış, randevu girilmemiş (liste filtresiyle aynı)
+        $pendingCount = (clone $base)->where(function ($inner) use ($user) {
+            $inner->where('status', MaintenanceRequest::STATUS_PENDING)
+                ->orWhere(function ($awaitingSchedule) use ($user) {
+                    $awaitingSchedule
+                        ->where('status', MaintenanceRequest::STATUS_APPROVED)
+                        ->where('technician_user_id', $user->id)
+                        ->whereNull('appointment_at');
+                });
+        })->count();
+
+        // Onaylanan: randevu bekleyen kendi atamalarım Bekleyen'de kalsın
+        $approvedCount = (clone $base)
+            ->where('status', MaintenanceRequest::STATUS_APPROVED)
+            ->where(function ($inner) use ($user) {
+                $inner->whereNull('technician_user_id')
+                    ->orWhere('technician_user_id', '!=', $user->id)
+                    ->orWhereNotNull('appointment_at');
+            })
+            ->count();
 
         return response()->json([
-            'pending_count' => (clone $base)->where('status', MaintenanceRequest::STATUS_PENDING)->count(),
-            'approved_count' => (clone $base)->where('status', MaintenanceRequest::STATUS_APPROVED)->count(),
+            'pending_count' => $pendingCount,
+            'approved_count' => $approvedCount,
             'rejected_count' => (clone $base)->where('status', MaintenanceRequest::STATUS_REJECTED)->count(),
             'in_progress_count' => (clone $base)->where('status', MaintenanceRequest::STATUS_IN_PROGRESS)->count(),
             'awaiting_confirmation_count' => (clone $base)

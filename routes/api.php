@@ -92,6 +92,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/maintenance', [TechnicianMaintenanceController::class, 'index']);
         Route::get('/maintenance/{maintenanceRequest}', [TechnicianMaintenanceController::class, 'show']);
         Route::post('/maintenance/{maintenanceRequest}/decide', [TechnicianMaintenanceController::class, 'decide']);
+        Route::post('/maintenance/{maintenanceRequest}/decline', [TechnicianMaintenanceController::class, 'decline']);
         Route::post('/maintenance/{maintenanceRequest}/schedule', [TechnicianMaintenanceController::class, 'schedule']);
         Route::post('/maintenance/{maintenanceRequest}/complete', [TechnicianMaintenanceController::class, 'complete']);
     });
